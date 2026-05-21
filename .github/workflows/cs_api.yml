@@ -1,0 +1,30 @@
+name: Codespace API Test
+on:
+  workflow_dispatch:
+permissions:
+  codespaces: write
+  contents: read
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - name: List codespaces
+        run: |
+          echo "=== LIST with PAT secret ==="
+          curl -s -H "Authorization: token ${{ secrets.GH_PAT_FOR_CS }}" \
+            "https://api.github.com/user/codespaces" | python3 -c \
+            "import sys,json;d=json.load(sys.stdin);print('total:',d.get('total_count'));[(print(' -',c.get('name'),c.get('state'),c.get('location'))) for c in d.get('codespaces',[])]"
+
+      - name: Get specific codespace
+        run: |
+          echo "=== SPECIFIC ==="
+          curl -s -H "Authorization: token ${{ secrets.GH_PAT_FOR_CS }}" \
+            "https://api.github.com/user/codespaces/opulent-guacamole-5vq7g4r6wrwqhvrj" | python3 -c \
+            "import sys,json;d=json.load(sys.stdin);print(json.dumps(d,indent=2)[:2000])"
+
+      - name: Start codespace
+        run: |
+          echo "=== START ==="
+          curl -s -X POST -H "Authorization: token ${{ secrets.GH_PAT_FOR_CS }}" \
+            "https://api.github.com/user/codespaces/opulent-guacamole-5vq7g4r6wrwqhvrj/start" | python3 -c \
+            "import sys,json;d=json.load(sys.stdin);print(json.dumps(d,indent=2)[:500])"
