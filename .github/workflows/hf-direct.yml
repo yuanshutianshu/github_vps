@@ -1,0 +1,19 @@
+name: HF Download Direct
+on:
+  workflow_dispatch:
+    inputs:
+      model_id:
+        description: "Model"
+        required: true
+        type: string
+
+jobs:
+  download:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Download
+        env:
+          HF_TOKEN: \${{ secrets.HF_TOKEN }}
+        run: |
+          pip install huggingface_hub -q
+          python3 -c "import os; from huggingface_hub import snapshot_download; model_id='${{ github.event.inputs.model_id }}'; token=os.environ.get('HF_TOKEN',''); print('Downloading:', model_id); local_dir=snapshot_download(repo_id=model_id, token=token, cache_dir='/tmp/md'); print('Done:', local_dir)"
