@@ -4,9 +4,6 @@ on:
 jobs:
   test:
     runs-on: ubuntu-latest
-    permissions:
-      codespaces: write
-      contents: read
     steps:
       - name: List codespaces
         run: |
