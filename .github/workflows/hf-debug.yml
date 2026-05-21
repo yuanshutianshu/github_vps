@@ -31,6 +31,6 @@ jobs:
       - name: Upload model artifact
         uses: actions/upload-artifact@v4
         with:
-          name: ${{ github.event.inputs.model_id }}-files
+          name: ${{ github.event.inputs.model_id }}-${{ github.run_id }}
           path: /tmp/model_output/
           retention-days: 1
