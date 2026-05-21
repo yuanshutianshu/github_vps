@@ -1,0 +1,32 @@
+name: HF Model Download
+on:
+  workflow_dispatch:
+    inputs:
+      model_id:
+        description: "Model ID (e.g. TinyLlama/TinyLlama-1.1B-Chat-v1.0)"
+        required: true
+        type: string
+      target_space:
+        description: "HF Space name (leave empty to skip upload)"
+        required: false
+        type: string
+
+jobs:
+  download:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v4
+
+      - name: Check HF identity
+        env:
+          HF_TOKEN: ${{ secrets.HF_TOKEN }}
+        run: |
+          pip install huggingface_hub -q 2>&1 | tail -1
+          python3 -c "from huggingface_hub import HfApi; api = HfApi(token='$HF_TOKEN'); me = api.whoami(); print('HF User:', me['name'], '| disk:', me.get('diskUsage', 'N/A'))"
+
+      - name: Run download script
+        env:
+          HF_TOKEN: ${{ secrets.HF_TOKEN }}
+        run: |
+          python3 scripts/download_model.py "${{ github.event.inputs.model_id }}" "${{ github.event.inputs.target_space }}"
