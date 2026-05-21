@@ -1,0 +1,19 @@
+name: Test HF Connectivity
+on: workflow_dispatch
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Test HuggingFace
+        run: |
+          echo "=== Testing huggingface.co ==="
+          HTTP_CODE=$(curl -s --max-time 10 -o /dev/null -w "%{http_code}" https://huggingface.co 2>&1)
+          echo "HF HTTP Code: $HTTP_CODE"
+          echo "=== Testing raw.githubusercontent.com ==="
+          curl -s --max-time 5 -o /dev/null -w "%{http_code}" https://raw.githubusercontent.com
+          echo ""
+          echo "=== Testing pypi.org ==="
+          curl -s --max-time 5 -o /dev/null -w "%{http_code}" https://pypi.org
+          echo ""
+          echo "=== GitHub Actions IP check ==="
+          curl -s --max-time 5 https://api.github.com/versions | python3 -c "import sys,json; d=json.load(sys.stdin); print('OK' if d else 'FAIL')" 2>&1 || echo "API versions failed"
