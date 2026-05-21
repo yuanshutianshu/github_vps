@@ -1,0 +1,18 @@
+name: Test 2 Inputs
+on:
+  workflow_dispatch:
+    inputs:
+      model_id:
+        description: "Model"
+        required: true
+        type: string
+      target_space:
+        description: "Space"
+        required: false
+        type: string
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - run: echo "${{ github.event.inputs.model_id }}" "${{ github.event.inputs.target_space }}"
