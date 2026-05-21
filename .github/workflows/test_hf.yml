@@ -1,16 +1,20 @@
-name: Register HF Account
+name: HF Auto Register
 on: workflow_dispatch
 jobs:
-  register:
+  hf-register:
     runs-on: ubuntu-latest
     steps:
-      - name: Install HF CLI
+      - name: Check HF OAuth endpoints
         run: |
-          pip install huggingface_hub[cli] 2>&1 | tail -5
-      - name: Test HF access
+          echo "=== HF OAuth authorize ==="
+          curl -s --max-time 10 -o /dev/null -w "HTTP:%{http_code} REDIR:%{redirect_url}\n" \
+            "https://huggingface.co/oauth-licensed/authorize?client_id=0b6d61777d4f0e088352&redirect_uri=https://huggingface.co/oauth-licensed/callback&response_type=code&scope=openid+profile+email"
+          echo "=== HF token creation API ==="
+          # Try creating a token via API (requires existing auth)
+          curl -s --max-time 10 https://huggingface.co/api/token-keys \
+            -w "\nHTTP:%{http_code}" | head -5
+      - name: Test HF model download
         run: |
-          echo "=== Test HF API ==="
-          curl -s https://huggingface.co/api/whoami-v2 || echo "Not logged in"
-          echo ""
-          echo "=== HF CLI version ==="
-          hf --version 2>&1 || echo "hf not found"
+          pip install huggingface_hub -q 2>&1 | tail -1
+          echo "=== Try anonymous model download ==="
+          hf downloadmistralai/Mistral-7B-Instruct-v0.3 --filename VERSION --local-dir /tmp/test 2>&1 | head -5
