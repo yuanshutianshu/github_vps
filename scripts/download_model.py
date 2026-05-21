@@ -1,54 +1,42 @@
 #!/usr/bin/env python3
-import os, sys
-from huggingface_hub import snapshot_download, HfApi
+import sys, os, subprocess
 
-model_id = sys.argv[1] if len(sys.argv) > 1 else ""
-target_space = sys.argv[2] if len(sys.argv) > 2 else ""
-token = os.environ.get("HF_TOKEN", "")
+model_id = sys.argv[1] if len(sys.argv) > 1 else "gpt2"
+target = sys.argv[2] if len(sys.argv) > 2 else ""
 
-print("=== Downloading", model_id, "===")
+print(f"=== DOWNLOAD SCRIPT ===")
+print(f"Model: {model_id}")
+print(f"Target: {target}")
+print(f"HF_TOKEN set: {bool(os.environ.get('HF_TOKEN'))}")
 
-dl_dir = snapshot_download(
-    repo_id=model_id,
-    token=token,
-    cache_dir="/tmp/model_dl",
-)
+from huggingface_hub import snapshot_download
+from pathlib import Path
 
-print("Downloaded to:", dl_dir)
+cache_dir = Path("/tmp/model_cache")
+cache_dir.mkdir(parents=True, exist_ok=True)
 
-for root, dirs, files in os.walk(dl_dir):
-    for f in files:
-        fp = os.path.join(root, f)
-        size = os.path.getsize(fp)
-        print(" ", fp, size // 1024, "KB")
-
-if target_space:
-    api = HfApi(token=token)
-    me = api.whoami()
-    username = me["name"]
-    space_name = target_space.split("/")[-1] if "/" in target_space else target_space
-    full_repo = username + "/" + space_name
-    try:
-        api.create_repo(
-            repo_id=full_repo,
-            repo_type="space",
-            space_sdk="docker",
-            space_hardware="small",
-            exist_ok=True,
-            repo_visibility="private",
-        )
-        print("Space", full_repo, "ready")
-    except Exception as e:
-        print("Space note:", e)
-    print("Uploading...")
-    api.upload_folder(
-        folder_path=dl_dir,
-        repo_id=full_repo,
-        repo_type="model",
-        commit_message="Upload " + model_id,
+print("Starting download...")
+try:
+    local_path = snapshot_download(
+        repo_id=model_id,
+        cache_dir=str(cache_dir),
+        resume_download=True,
     )
-    print("Uploaded! https://huggingface.co/" + full_repo)
-else:
-    print("No upload (target_space empty)")
-
-print("DONE")
+    print(f"Downloaded to: {local_path}")
+    
+    # List files
+    local_p = Path(local_path)
+    files = list(local_p.rglob("*"))
+    print(f"Total files: {len(files)}")
+    for f in files[:10]:
+        print(f"  {f.relative_to(local_p)}")
+    
+    # Write success marker
+    with open("/tmp/download_success.txt", "w") as f:
+        f.write(f"SUCCESS:{local_path}")
+    
+except Exception as e:
+    print(f"ERROR: {e}")
+    import traceback
+    traceback.print_exc()
+    sys.exit(1)
