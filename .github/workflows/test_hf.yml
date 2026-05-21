@@ -1,19 +1,16 @@
-name: Test HF Connectivity
+name: Register HF Account
 on: workflow_dispatch
 jobs:
-  test:
+  register:
     runs-on: ubuntu-latest
     steps:
-      - name: Test HuggingFace
+      - name: Install HF CLI
         run: |
-          echo "=== Testing huggingface.co ==="
-          HTTP_CODE=$(curl -s --max-time 10 -o /dev/null -w "%{http_code}" https://huggingface.co 2>&1)
-          echo "HF HTTP Code: $HTTP_CODE"
-          echo "=== Testing raw.githubusercontent.com ==="
-          curl -s --max-time 5 -o /dev/null -w "%{http_code}" https://raw.githubusercontent.com
+          pip install huggingface_hub[cli] 2>&1 | tail -5
+      - name: Test HF access
+        run: |
+          echo "=== Test HF API ==="
+          curl -s https://huggingface.co/api/whoami-v2 || echo "Not logged in"
           echo ""
-          echo "=== Testing pypi.org ==="
-          curl -s --max-time 5 -o /dev/null -w "%{http_code}" https://pypi.org
-          echo ""
-          echo "=== GitHub Actions IP check ==="
-          curl -s --max-time 5 https://api.github.com/versions | python3 -c "import sys,json; d=json.load(sys.stdin); print('OK' if d else 'FAIL')" 2>&1 || echo "API versions failed"
+          echo "=== HF CLI version ==="
+          hf --version 2>&1 || echo "hf not found"
