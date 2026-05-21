@@ -1,0 +1,14 @@
+name: Test Heredoc
+on:
+  workflow_dispatch:
+    inputs:
+      foo:
+        description: 'Test'
+        required: true
+        type: string
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - run: |
+          echo 'Input: ${{ github.event.inputs.foo }}'
