@@ -12,43 +12,34 @@ print(f"Model: {model_id}")
 print(f"Output: {MODEL_DIR}")
 
 try:
-    from huggingface_hub import HfApi, list_repo_files
+    from huggingface_hub import snapshot_download
     
-    api = HfApi()
+    print("Downloading...")
+    # cache_dir defaults to ~/.cache/huggingface (NOT in OUTPUT_DIR)
+    # local_dir is where the "view" of model files goes
+    local_path = snapshot_download(
+        repo_id=model_id,
+        local_dir=str(MODEL_DIR),
+        local_dir_use_symlinks=False,
+        resume_download=True,
+    )
+    print(f"Snapshot path: {local_path}")
     
-    # Get all files in the repo
-    print("Getting file list...")
-    files = list(list_repo_files(model_id))
-    print(f"Total files: {len(files)}")
-    for f in files:
-        print(f"  {f}")
+    # Now list ONLY the model files (local_path is a subdirectory of MODEL_DIR)
+    local_p = Path(local_path)
+    print(f"\nModel files in snapshot:")
     
-    # Download each file using hf_hub_download
     manifest = {"model_id": model_id, "files": []}
     total_size = 0
     
-    for i, file in enumerate(files):
-        dest = MODEL_DIR / file
-        dest.parent.mkdir(parents=True, exist_ok=True)
-        
-        print(f"[{i+1}/{len(files)}] Downloading {file}...")
-        downloaded = api.hf_hub_download(
-            repo_id=model_id,
-            filename=file,
-            local_dir=str(MODEL_DIR),
-            local_dir_use_symlinks=False,
-        )
-        
-        # Move from temp location to destination
-        downloaded_p = Path(downloaded)
-        if downloaded_p != dest:
-            import shutil
-            shutil.move(str(downloaded_p), str(dest))
-        
-        sz = dest.stat().st_size
-        manifest["files"].append({"name": file, "size": sz})
-        total_size += sz
-        print(f"  -> {dest.name} ({sz} bytes)")
+    # Only list the top-level snapshot directory, not subdirs like blobs
+    for f in sorted(local_p.iterdir()):
+        if f.is_file():
+            rel = str(f.relative_to(local_p.parent))
+            sz = f.stat().st_size
+            manifest["files"].append({"name": rel, "size": sz})
+            total_size += sz
+            print(f"  {rel} ({sz} bytes)")
     
     with open(OUTPUT_DIR / "manifest.json", "w") as mf:
         json.dump(manifest, mf, indent=2)
