@@ -27,6 +27,8 @@ jobs:
         run: |
           echo "Model: ${{ github.event.inputs.model_id }}"
           python3 -u scripts/download_model.py "${{ github.event.inputs.model_id }}" 2>&1
+          echo "---VERIFY---"
+          du -sh /tmp/model_output/${{ github.event.inputs.model_id }}
 
       - name: Upload model artifact
         uses: actions/upload-artifact@v4
@@ -34,3 +36,4 @@ jobs:
           name: ${{ github.event.inputs.model_id }}-${{ github.run_id }}
           path: /tmp/model_output/${{ github.event.inputs.model_id }}
           retention-days: 1
+          overwrite: true
