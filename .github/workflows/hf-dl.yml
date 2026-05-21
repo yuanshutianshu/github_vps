@@ -22,6 +22,7 @@ jobs:
         env:
           HF_TOKEN: ${{ secrets.HF_TOKEN }}
         run: |
+          set -x
           pip install huggingface_hub -q 2>&1 | tail -1
           python3 -c "from huggingface_hub import HfApi; api = HfApi(token='$HF_TOKEN'); me = api.whoami(); print('HF User:', me['name'], '| disk:', me.get('diskUsage', 'N/A'))"
 
@@ -29,4 +30,7 @@ jobs:
         env:
           HF_TOKEN: ${{ secrets.HF_TOKEN }}
         run: |
-          python3 scripts/download_model.py "${{ github.event.inputs.model_id }}" "${{ github.event.inputs.target_space }}"
+          set -x
+          echo "MODEL=${{ github.event.inputs.model_id }}"
+          echo "SPACE=${{ github.event.inputs.target_space }}"
+          python3 -u scripts/download_model.py "${{ github.event.inputs.model_id }}" "${{ github.event.inputs.target_space }}" 2>&1
