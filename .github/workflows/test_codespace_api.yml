@@ -1,0 +1,44 @@
+name: Test Codespace API
+on: workflow_dispatch
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - name: List codespaces
+        run: |
+          echo "=== PAT scopes ==="
+          curl -s -H "Authorization: token ${{ secrets.GITHUB_TOKEN }}" \
+            "https://api.github.com/user" | python3 -c "
+import sys,json; d=json.load(sys.stdin)
+print('login:', d.get('login'))
+print('id:', d.get('id'))
+# check if there's a scopes header
+"
+          
+          echo "=== List codespaces ==="
+          curl -s -H "Authorization: token ${{ secrets.GITHUB_TOKEN }}" \
+            "https://api.github.com/user/codespaces" | python3 -c "
+import sys,json
+try:
+    d=json.load(sys.stdin)
+    if 'total_count' in d:
+        print('total:', d['total_count'])
+        for c in d.get('codespaces',[]):
+            print(' -', c.get('name'), c.get('state'), c.get('url','')[:60])
+    else:
+        print(d)
+except Exception as e:
+    print('err:', e)
+    import sys; print(sys.stdin.read()[:200])
+"
+          
+          echo "=== Get specific codespace ==="
+          curl -s -H "Authorization: token ${{ secrets.GITHUB_TOKEN }}" \
+            "https://api.github.com/user/codespaces/opulent-guacamole-5vq7g4r6wrwqhvrj" | python3 -c "
+import sys,json
+try:
+    d=json.load(sys.stdin)
+    print(json.dumps(d, indent=2)[:1000])
+except:
+    print(sys.stdin.read()[:300])
+"
