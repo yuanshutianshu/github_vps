@@ -1,0 +1,98 @@
+name: Download and Upload HF Model
+on:
+  workflow_dispatch:
+    inputs:
+      model_id:
+        description: "Model ID (e.g. TinyLlama/TinyLlama-1.1B-Chat-v1.0)"
+        required: true
+        type: string
+      target_space:
+        description: "HF Space name (leave empty to skip upload)"
+        required: false
+        type: string
+
+jobs:
+  download:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check HF identity
+        env:
+          HF_TOKEN: \${{ secrets.HF_TOKEN }}
+        run: |
+          pip install huggingface_hub -q 2>&1 | tail -1
+          python3 -c "from huggingface_hub import HfApi; api = HfApi(token='$HF_TOKEN'); me = api.whoami(); print('HF User:', me['name'], '| disk:', me.get('diskUsage', 'N/A'))"
+
+      - name: Download model from HF
+        env:
+          HF_TOKEN: \${{ secrets.HF_TOKEN }}
+        run: |
+          mkdir -p /tmp/model_downloads
+          python3 << 'PYEOF'
+import os
+from huggingface_hub import snapshot_download
+
+model_id = "${{ github.event.inputs.model_id }}"
+token = os.environ.get("HF_TOKEN", "")
+
+print("=== Downloading", model_id, "===")
+
+local_dir = snapshot_download(
+    repo_id=model_id,
+    token=token,
+    cache_dir="/tmp/model_downloads",
+)
+
+print("Downloaded to:", local_dir)
+
+for root, dirs, files in os.walk(local_dir):
+    for f in files:
+        fp = os.path.join(root, f)
+        print(" ", fp, os.path.getsize(fp) // 1024, "KB")
+print("DONE")
+PYEOF
+
+      - name: Upload to HF Space
+        if: github.event.inputs.target_space != ''
+        env:
+          HF_TOKEN: \${{ secrets.HF_TOKEN }}
+        run: |
+          python3 << 'PYEOF'
+import os
+from huggingface_hub import HfApi
+
+model_id = "${{ github.event.inputs.model_id }}"
+target_space = "${{ github.event.inputs.target_space }}"
+model_dir = "/tmp/model_downloads"
+token = os.environ.get("HF_TOKEN", "")
+
+api = HfApi(token=token)
+
+me = api.whoami()
+username = me["name"]
+print("Uploading as user:", username)
+
+space_name = target_space.split("/")[-1] if "/" in target_space else target_space
+full_repo = username + "/" + space_name
+
+try:
+    api.create_repo(
+        repo_id=full_repo,
+        repo_type="space",
+        space_sdk="docker",
+        space_hardware="small",
+        exist_ok=True,
+        repo_visibility="private",
+    )
+    print("Space", full_repo, "ready")
+except Exception as e:
+    print("Space note:", e)
+
+print("Uploading model files...")
+api.upload_folder(
+    folder_path=model_dir,
+    repo_id=full_repo,
+    repo_type="model",
+    commit_message="Upload " + model_id,
+)
+print("Uploaded! https://huggingface.co/" + full_repo)
+PYEOF
