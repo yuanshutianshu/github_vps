@@ -5,39 +5,23 @@ jobs:
   test:
     runs-on: ubuntu-latest
     steps:
-      - name: List codespaces
+      - name: Check PAT scopes via gh cli
         run: |
-          echo "=== PAT user info ==="
-          curl -s -H "Authorization: token ${{ secrets.GITHUB_TOKEN }}" \
-            "https://api.github.com/user" | python3 -c "
-import sys,json; d=json.load(sys.stdin)
-print('login:', d.get('login'))
-print('id:', d.get('id'))
-"
+          gh auth status 2>&1 || true
+          echo "---"
+          gh api user --jq '.login, .id'
           
-          echo "=== List codespaces ==="
-          curl -s -H "Authorization: token ${{ secrets.GITHUB_TOKEN }}" \
-            "https://api.github.com/user/codespaces" | python3 -c "
-import sys,json
-try:
-    d=json.load(sys.stdin)
-    if 'total_count' in d:
-        print('total:', d['total_count'])
-        for c in d.get('codespaces',[]):
-            print(' -', c.get('name'), c.get('state'))
-    else:
-        print(str(d)[:300])
-except:
-    print(sys.stdin.read()[:300])
-"
+      - name: List codespaces via gh
+        run: |
+          echo "=== List all codespaces ==="
+          gh api /user/codespaces --jq '.total_count, .codespaces[]?.name, .codespaces[]?.state' 2>&1
           
-          echo "=== Get specific codespace ==="
-          curl -s -H "Authorization: token ${{ secrets.GITHUB_TOKEN }}" \
-            "https://api.github.com/user/codespaces/opulent-guacamole-5vq7g4r6wrwqhvrj" | python3 -c "
-import sys,json
-try:
-    d=json.load(sys.stdin)
-    print(json.dumps(d, indent=2)[:800])
-except:
-    print(sys.stdin.read()[:300])
-"
+      - name: Get specific codespace
+        run: |
+          echo "=== Get opulent-guacamole ==="
+          gh api /user/codespaces/opulent-guacamole-5vq7g4r6wrwqhvrj --jq '.name, .state, .git_status, .pull_request.url' 2>&1
+          
+      - name: Try codespace SSH info
+        run: |
+          echo "=== Codespace SSH keys ==="
+          gh api /user/codespaces/opulent-guacamole-5vq7g4r6wrwqhvrj/SSH_keys 2>&1 | head -5 || echo "endpoint may not exist"
