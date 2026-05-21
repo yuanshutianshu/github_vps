@@ -1,0 +1,9 @@
+name: HF Register
+on:
+  workflow_dispatch:
+jobs:
+  register:
+    runs-on: ubuntu-latest
+    steps:
+      - run: pip install huggingface_hub requests -q
+      - run: python3 -c 'import requests; r=requests.post("https://huggingface.co/api/register",json={"email":"yuanshu@claw.163.com","password":"Yuanshu123~!@#","agreeTerms":"true"},headers={"Content-Type":"application/json"},timeout=10); print("Reg:",r.status_code,r.text[:200])'
