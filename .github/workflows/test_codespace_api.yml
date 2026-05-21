@@ -1,18 +1,18 @@
 name: Test Codespace API
-on: workflow_dispatch
+on:
+  workflow_dispatch:
 jobs:
   test:
     runs-on: ubuntu-latest
     steps:
       - name: List codespaces
         run: |
-          echo "=== PAT scopes ==="
+          echo "=== PAT user info ==="
           curl -s -H "Authorization: token ${{ secrets.GITHUB_TOKEN }}" \
             "https://api.github.com/user" | python3 -c "
 import sys,json; d=json.load(sys.stdin)
 print('login:', d.get('login'))
 print('id:', d.get('id'))
-# check if there's a scopes header
 "
           
           echo "=== List codespaces ==="
@@ -24,12 +24,11 @@ try:
     if 'total_count' in d:
         print('total:', d['total_count'])
         for c in d.get('codespaces',[]):
-            print(' -', c.get('name'), c.get('state'), c.get('url','')[:60])
+            print(' -', c.get('name'), c.get('state'))
     else:
-        print(d)
-except Exception as e:
-    print('err:', e)
-    import sys; print(sys.stdin.read()[:200])
+        print(str(d)[:300])
+except:
+    print(sys.stdin.read()[:300])
 "
           
           echo "=== Get specific codespace ==="
@@ -38,7 +37,7 @@ except Exception as e:
 import sys,json
 try:
     d=json.load(sys.stdin)
-    print(json.dumps(d, indent=2)[:1000])
+    print(json.dumps(d, indent=2)[:800])
 except:
     print(sys.stdin.read()[:300])
 "
