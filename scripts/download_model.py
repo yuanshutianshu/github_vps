@@ -12,32 +12,43 @@ print(f"Model: {model_id}")
 print(f"Output: {MODEL_DIR}")
 
 try:
-    from huggingface_hub import snapshot_download
+    from huggingface_hub import HfApi, list_repo_files
     
-    print("Downloading...")
-    # local_dir puts files directly there, no blobs/ in the path
-    local_path = snapshot_download(
-        repo_id=model_id,
-        local_dir=str(MODEL_DIR),
-        local_dir_use_symlinks=False,
-        resume_download=True,
-    )
-    print(f"Downloaded to: {local_path}")
+    api = HfApi()
     
-    # List what's there
-    local_p = Path(local_path)
-    files = sorted(local_p.rglob("*"))
-    print(f"Total items: {len(files)}")
+    # Get all files in the repo
+    print("Getting file list...")
+    files = list(list_repo_files(model_id))
+    print(f"Total files: {len(files)}")
+    for f in files:
+        print(f"  {f}")
     
+    # Download each file using hf_hub_download
     manifest = {"model_id": model_id, "files": []}
     total_size = 0
-    for f in files:
-        if f.is_file():
-            rel = str(f.relative_to(local_p))
-            sz = f.stat().st_size
-            manifest["files"].append({"name": rel, "size": sz})
-            total_size += sz
-            print(f"  {rel} ({sz} bytes)")
+    
+    for i, file in enumerate(files):
+        dest = MODEL_DIR / file
+        dest.parent.mkdir(parents=True, exist_ok=True)
+        
+        print(f"[{i+1}/{len(files)}] Downloading {file}...")
+        downloaded = api.hf_hub_download(
+            repo_id=model_id,
+            filename=file,
+            local_dir=str(MODEL_DIR),
+            local_dir_use_symlinks=False,
+        )
+        
+        # Move from temp location to destination
+        downloaded_p = Path(downloaded)
+        if downloaded_p != dest:
+            import shutil
+            shutil.move(str(downloaded_p), str(dest))
+        
+        sz = dest.stat().st_size
+        manifest["files"].append({"name": file, "size": sz})
+        total_size += sz
+        print(f"  -> {dest.name} ({sz} bytes)")
     
     with open(OUTPUT_DIR / "manifest.json", "w") as mf:
         json.dump(manifest, mf, indent=2)
