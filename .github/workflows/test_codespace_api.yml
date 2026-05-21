@@ -1,42 +1,48 @@
 name: Test Codespace API
 on:
   workflow_dispatch:
+permissions:
+  codespaces: write
+  contents: read
+  actions: read
 jobs:
   test:
     runs-on: ubuntu-latest
-    env:
-      GH_TOKEN: ${{ github.token }}
     steps:
+      - name: Check token info
+        run: |
+          echo "=== gh auth ==="
+          gh auth status
+          
       - name: Get user info
         run: |
-          echo "=== USER ==="
           curl -s -H "Authorization: token $GITHUB_TOKEN" \
             "https://api.github.com/user" | python3 -c \
             "import sys,json;d=json.load(sys.stdin);print('login:', d.get('login'), 'id:', d.get('id'))"
 
-      - name: List codespaces
+      - name: List codespaces with PAT
+        env:
+          PAT: ${{ secrets.GH_PAT_FOR_CS }}
         run: |
-          echo "=== LIST CODESPACES ==="
-          curl -s -H "Authorization: token $GITHUB_TOKEN" \
+          echo "=== LIST with PAT ==="
+          curl -s -H "Authorization: token $PAT" \
             "https://api.github.com/user/codespaces" | python3 -c \
             "import sys,json;d=json.load(sys.stdin);print('total:',d.get('total_count'));[(print(' -',c.get('name'),c.get('state'),c.get('location'))) for c in d.get('codespaces',[])]"
 
       - name: Get specific codespace
+        env:
+          PAT: ${{ secrets.GH_PAT_FOR_CS }}
         run: |
-          echo "=== SPECIFIC CODESPACE ==="
-          curl -s -H "Authorization: token $GITHUB_TOKEN" \
+          echo "=== SPECIFIC ==="
+          curl -s -H "Authorization: token $PAT" \
             "https://api.github.com/user/codespaces/opulent-guacamole-5vq7g4r6wrwqhvrj" | python3 -c \
-            "import sys,json;d=json.load(sys.stdin);print('name:',d.get('name'));print('state:',d.get('state'));print('location:',d.get('location'));print('dev_url:',d.get('dev_url'));print('url:',d.get('url'));print('pull_request:',d.get('pull_request',{}).get('url','none'))"
+            "import sys,json;d=json.load(sys.stdin);print(json.dumps(d,indent=2)[:1500])"
 
-      - name: Try start endpoint
+      - name: Start codespace
+        env:
+          PAT: ${{ secrets.GH_PAT_FOR_CS }}
         run: |
-          echo "=== POST START ==="
-          RESP=$(curl -s -X POST -H "Authorization: token $GITHUB_TOKEN" \
-            "https://api.github.com/user/codespaces/opulent-guacamole-5vq7g4r6wrwqhvrj/start")
-          echo "$RESP" | head -3
-
-      - name: Codespace SSH keys
-        run: |
-          echo "=== SSH KEYS ==="
-          curl -s -H "Authorization: token $GITHUB_TOKEN" \
-            "https://api.github.com/user/codespaces/opulent-guacamole-5vq7g4r6wrwqhvrj/SSH_keys" | head -5
+          echo "=== START ==="
+          curl -s -X POST -H "Authorization: token $PAT" \
+            "https://api.github.com/user/codespaces/opulent-guacamole-5vq7g4r6wrwqhvrj/start" | python3 -c \
+            "import sys,json; d=json.load(sys.stdin); print(json.dumps(d,indent=2)[:500])"
