@@ -17,14 +17,14 @@ jobs:
     steps:
       - name: Check HF identity
         env:
-          HF_TOKEN: \${{ secrets.HF_TOKEN }}
+          HF_TOKEN: ${{ secrets.HF_TOKEN }}
         run: |
           pip install huggingface_hub -q 2>&1 | tail -1
           python3 -c "from huggingface_hub import HfApi; api = HfApi(token='$HF_TOKEN'); me = api.whoami(); print('HF User:', me['name'], '| disk:', me.get('diskUsage', 'N/A'))"
 
       - name: Download model from HF
         env:
-          HF_TOKEN: \${{ secrets.HF_TOKEN }}
+          HF_TOKEN: ${{ secrets.HF_TOKEN }}
         run: |
           mkdir -p /tmp/model_downloads
           python3 << 'PYEOF'
@@ -54,7 +54,7 @@ PYEOF
       - name: Upload to HF Space
         if: github.event.inputs.target_space != ''
         env:
-          HF_TOKEN: \${{ secrets.HF_TOKEN }}
+          HF_TOKEN: ${{ secrets.HF_TOKEN }}
         run: |
           python3 << 'PYEOF'
 import os
