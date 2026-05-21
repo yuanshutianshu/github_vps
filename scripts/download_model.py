@@ -1,7 +1,6 @@
 #!/usr/bin/env python3
-import sys, os, json
+import sys, os, json, shutil
 from pathlib import Path
-from transformers import AutoModelForCausalLM, AutoTokenizer
 
 model_id = sys.argv[1] if len(sys.argv) > 1 else "gpt2"
 OUTPUT_DIR = Path("/tmp/model_output")
@@ -10,32 +9,49 @@ OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
 print(f"=== DOWNLOAD SCRIPT ===")
 print(f"Model: {model_id}")
 
-# Download using from_pretrained (no HF cache, direct to local dir)
-print("Downloading model files...")
-model = AutoModelForCausalLM.from_pretrained(model_id, local_files_only=False)
-print("Model loaded.")
+from huggingface_hub import HfApi, snapshot_download
 
-# Save to output dir
-model.save_pretrained(save_directory=str(OUTPUT_DIR / model_id.replace("/", "_")))
-print("Model saved.")
+# Download using snapshot_download to output dir directly
+# This stores files in ~/.cache/huggingface/ but returns the snapshot path
+print("Downloading...")
+local_path = snapshot_download(
+    repo_id=model_id,
+    cache_dir=str(OUTPUT_DIR / "hf_cache"),
+    resume_download=True,
+)
+print(f"Snapshot: {local_path}")
 
-# Save tokenizer too
-tokenizer = AutoTokenizer.from_pretrained(model_id)
-tokenizer.save_pretrained(save_directory=str(OUTPUT_DIR / model_id.replace("/", "_")))
-print("Tokenizer saved.")
+# The snapshot path is the blobs directory - we need the actual repo files
+# snapshot_download returns the "downloaded" path which is the repo snapshot dir
+# List what's there
+local_p = Path(local_path)
+print(f"\nSnapshot contents:")
+for f in sorted(local_p.rglob("*"))[:10]:
+    print(f"  {f.relative_to(local_p)}")
 
-# Create manifest
+# Copy to output dir
 output_model = OUTPUT_DIR / model_id.replace("/", "_")
-files = list(output_model.rglob("*"))
+output_model.mkdir(parents=True, exist_ok=True)
+
 manifest = {"model_id": model_id, "files": []}
-for f in files:
+total_size = 0
+
+# The snapshot_download returns the "blobs" parent or the actual model dir?
+# Actually it returns the path to the downloaded snapshot which is the repo_files dir
+# We need to list the files properly
+for f in sorted(local_p.rglob("*")):
     if f.is_file():
-        manifest["files"].append({"name": str(f.relative_to(output_model)), "size": f.stat().st_size})
-        print(f"  {f.name} ({f.stat().st_size} bytes})")
+        rel = f.relative_to(local_p)
+        dest = output_model / rel
+        dest.parent.mkdir(parents=True, exist_ok=True)
+        shutil.copy2(f, dest)
+        sz = f.stat().st_size
+        manifest["files"].append({"name": str(rel), "size": sz})
+        total_size += sz
+        print(f"  {rel} ({sz} bytes})")
 
 with open(OUTPUT_DIR / "manifest.json", "w") as mf:
     json.dump(manifest, mf, indent=2)
 
-total = sum(f["size"] for f in manifest["files"])
-print(f"\nFiles: {len(manifest['files'])}, Total: {total/1024/1024:.1f} MB")
+print(f"\nFiles: {len(manifest['files'])}, Total: {total_size/1024/1024:.1f} MB")
 print("Done!")
