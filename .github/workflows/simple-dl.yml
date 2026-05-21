@@ -1,0 +1,14 @@
+name: Simple Download
+on:
+  workflow_dispatch:
+    inputs:
+      model_id:
+        description: "Model to download"
+        required: true
+        type: string
+
+jobs:
+  download:
+    runs-on: ubuntu-latest
+    steps:
+      - run: echo "Download ${{ github.event.inputs.model_id }}"
