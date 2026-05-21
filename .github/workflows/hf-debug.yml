@@ -26,12 +26,11 @@ jobs:
           HF_TOKEN: ${{ secrets.HF_TOKEN }}
         run: |
           echo "Model: ${{ github.event.inputs.model_id }}"
-          python3 -u scripts/download_model.py "${{ github.event.inputs.model_id }}" "" 2>&1 | tee /tmp/download_output.txt
-          echo "exit_code=$?" >> $GITHUB_OUTPUT
+          python3 -u scripts/download_model.py "${{ github.event.inputs.model_id }}" 2>&1
 
-      - name: Upload manifest
-        if: always()
-        run: |
-          echo "Download exit code: $(tail -1 /tmp/download_output.txt | grep exit_code || echo 'unknown')"
-          ls -la /tmp/model_cache/ 2>/dev/null || echo "Cache dir not found"
-          find /tmp/model_cache -type f 2>/dev/null | head -20 || echo "No cache files"
+      - name: Upload model artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ github.event.inputs.model_id }}-files
+          path: /tmp/model_output/
+          retention-days: 1
