@@ -3,11 +3,11 @@ on:
   workflow_dispatch:
     inputs:
       model_id:
-        description: "Model ID (e.g. TinyLlama/TinyLlama-1.1B-Chat-v1.0)"
+        description: "Model ID"
         required: true
         type: string
       target_space:
-        description: "HF Space name (leave empty to skip upload)"
+        description: "HF Space name"
         required: false
         type: string
 
@@ -15,20 +15,35 @@ jobs:
   download:
     runs-on: ubuntu-latest
     steps:
-      - name: Check HF identity
+      - name: Check identity
         env:
-          HF_TOKEN: ${ secrets.HF_TOKEN }
+          HF_TOKEN: ${{ secrets.HF_TOKEN }}
         run: |
-          pip install huggingface_hub -q 2>&1 | tail -1
-          python3 -c "from huggingface_hub import HfApi; api = HfApi(token='$HF_TOKEN'); me = api.whoami(); print('HF User:', me['name'], '| disk:', me.get('diskUsage', 'N/A'))"
+          pip install huggingface_hub -q
+          python3 -c "from huggingface_hub import HfApi; api=HfApi(token='$HF_TOKEN'); me=api.whoami(); print('User:', me['name'])"
 
-      - name: Write download script
+      - name: Write script
         run: |
-          echo "CmltcG9ydCBvcywgc3lzCmZyb20gaHVnZ2luZ2ZhY2VfaHViIGltcG9ydCBzbmFwc2hvdF9kb3dubG9hZCwgSGZBcGkKCm1vZGVsX2lkID0gc3lzLmFyZ3ZbMV0gaWYgbGVuKHN5cy5hcmd2KSA+IDEgZWxzZSAiIgp0YXJnZXRfc3BhY2UgPSBzeXMuYXJndlsyXSBpZiBsZW4oc3lzLmFyZ3YpID4gMiBlbHNlICIiCnRva2VuID0gb3MuZW52aXJvbi5nZXQoIkhGX1RPS0VOIiwgIiIpCgpwcmludCgiPT09IERvd25sb2FkaW5nIiwgbW9kZWxfaWQsICI9PT0iKQoKbG9jYWxfZGlyID0gc25hcHNob3RfZG93bmxvYWQoCiAgICByZXBvX2lkPW1vZGVsX2lkLAogICAgdG9rZW49dG9rZW4sCiAgICBjYWNoZV9kaXI9Ii90bXAvbW9kZWxfZGwiLAopCgpwcmludCgiRG93bmxvYWRlZCB0bzoiLCBsb2NhbF9kaXIpCgpmb3Igcm9vdCwgZGlycywgZmlsZXMgaW4gb3Mud2Fsayhsb2NhbF9kaXIpOgogICAgZm9yIGYgaW4gZmlsZXM6CiAgICAgICAgZnAgPSBvcy5wYXRoLmpvaW4ocm9vdCwgZikKICAgICAgICBwcmludCgiICIsIGZwLCBvcy5wYXRoLmdldHNpemUoZnApIC8vIDEwMjQsICJLQiIpCgppZiB0YXJnZXRfc3BhY2U6CiAgICBhcGkgPSBIZkFwaSh0b2tlbj10b2tlbikKICAgIG1lID0gYXBpLndob2FtaSgpCiAgICB1c2VybmFtZSA9IG1lWyJuYW1lIl0KICAgIHNwYWNlX25hbWUgPSB0YXJnZXRfc3BhY2Uuc3BsaXQoIi8iKVstMV0gaWYgIi8iIGluIHRhcmdldF9zcGFjZSBlbHNlIHRhcmdldF9zcGFjZQogICAgZnVsbF9yZXBvID0gdXNlcm5hbWUgKyAiLyIgKyBzcGFjZV9uYW1lCiAgICB0cnk6CiAgICAgICAgYXBpLmNyZWF0ZV9yZXBvKHJlcG9faWQ9ZnVsbF9yZXBvLCByZXBvX3R5cGU9InNwYWNlIiwgc3BhY2Vfc2RrPSJkb2NrZXIiLCBzcGFjZV9oYXJkd2FyZT0ic21hbGwiLCBleGlzdF9vaz1UcnVlLCByZXBvX3Zpc2liaWxpdHk9InByaXZhdGUiKQogICAgICAgIHByaW50KCJTcGFjZSIsIGZ1bGxfcmVwbywgInJlYWR5IikKICAgIGV4Y2VwdCBFeGNlcHRpb24gYXMgZToKICAgICAgICBwcmludCgiU3BhY2Ugbm90ZToiLCBlKQogICAgcHJpbnQoIlVwbG9hZGluZy4uLiIpCiAgICBhcGkudXBsb2FkX2ZvbGRlcihmb2xkZXJfcGF0aD1sb2NhbF9kaXIsIHJlcG9faWQ9ZnVsbF9yZXBvLCByZXBvX3R5cGU9Im1vZGVsIiwgY29tbWl0X21lc3NhZ2U9IlVwbG9hZCAiICsgbW9kZWxfaWQpCiAgICBwcmludCgiVXBsb2FkZWQhIGh0dHBzOi8vaHVnZ2luZ2ZhY2UuY28vIiArIGZ1bGxfcmVwbykKZWxzZToKICAgIHByaW50KCJObyB1cGxvYWQgKHRhcmdldF9zcGFjZSBlbXB0eSkiKQoKcHJpbnQoIkRPTkUiKQo=" | base64 -d > /tmp/dl.py
-          echo "Script written ($(wc -l < /tmp/dl.py) lines)"
+          python3 -c "open('/tmp/dl.py','w').write('''import os,sys
+from huggingface_hub import snapshot_download,HfApi
+model_id=sys.argv[1]
+target=sys.argv[2] if len(sys.argv)>2 else os.environ.get('HF_TOKEN','')
+token=os.environ.get("HF_TOKEN","")
+dl=snapshot_download(repo_id=model_id,token=token,cache_dir="/tmp/md")
+print('Downloaded:',dl)
+if sys.argv[2]:
+ api=HfApi(token=token);me=api.whoami()
+ space=sys.argv[2].split("/")[-1]
+ full=me["name"]+"/"+space
+ try: api.create_repo(repo_id=full,repo_type="space",space_sdk="docker",space_hardware="small",exist_ok=True,repo_visibility="private")
+ except: pass
+ api.upload_folder(folder_path=dl,repo_id=full,repo_type="model",commit_message="Upload "+model_id)
+ print('Uploaded: https://huggingface.co/'+full)
+else: print('No upload')
+'''); print('written')"
 
-      - name: Download and optionally upload
+      - name: Run download
         env:
-          HF_TOKEN: ${ secrets.HF_TOKEN }
+          HF_TOKEN: ${{ secrets.HF_TOKEN }}
         run: |
-          python3 /tmp/dl.py "${ github.event.inputs.model_id }" "${ github.event.inputs.target_space }"
+          python3 /tmp/dl.py "${{ github.event.inputs.model_id }}" "${{ github.event.inputs.target_space }}"
