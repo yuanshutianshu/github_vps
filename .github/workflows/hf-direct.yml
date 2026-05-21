@@ -1,0 +1,33 @@
+name: HF Model Download
+on:
+  workflow_dispatch:
+    inputs:
+      model_id:
+        description: "Model ID (e.g. TinyLlama/TinyLlama-1.1B-Chat-v1.0)"
+        required: true
+        type: string
+      target_space:
+        description: "HF Space name (leave empty to skip upload)"
+        required: false
+        type: string
+
+jobs:
+  download:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check HF identity
+        env:
+          HF_TOKEN: ${{ secrets.HF_TOKEN }}
+        run: |
+          pip install huggingface_hub -q 2>&1 | tail -1
+          python3 -c "from huggingface_hub import HfApi; api = HfApi(token='$HF_TOKEN'); me = api.whoami(); print('HF User:', me['name'], '| disk:', me.get('diskUsage', 'N/A'))"
+
+      - name: Write download script
+        run: |
+          python3 -c "import base64; exec(base64.b64decode('aW1wb3J0IG9zLCBzeXMKaW1wb3J0IGZyb20gaHVnZ2luZ2ZhY2VfaHViIGltcG9ydCBzbmFwc2hvdF9kb3dubG9hZCwgSGZBcGkKCm1vZGVsX2lkID0gc3lzLmFyZ3ZbMV0KaWYgbGVuKHN5cy5hcmd2KSA+IDE6CiAgICB0YXJnZXRfc3BhY2UgPSBzeXMuYXJndlsyXQplbHNlOgogICAgdGFyZ2V0X3NwYWNlID0gJycKCnRva2VuID0gb3MuZW52aXJvbi5nZXQoJ0hGX1RPS0VUJywgJycpCmlmIG5vdCB0b2tlbjoKICAgIHRva2VuID0gb3MuZW52aXJvbi5nZXQoJ0hGX1RPS0VUJywgJycpCgpwcmludCgnPT09IERvd25sb2FkaW5nIFMnLCBtb2RlbF9pZCwgJz09PScpCgpkbGtfZGlyID0gc25hcHNob3RfZG93bmxvYWQoCiAgICByZXBvX2lkID0gbW9kZWxfaWQsCiAgICB0b2tlbiA9IHRva2VuLAogICAgY2FjaGVfZGlyID0gJy90bXAvbW9kZWxfZGwnLAopCgpwcmludCgnRG93bmxvYWRlZCB0byA6ICcsIGRsaygpKQoKaW1wb3J0IG9zCmltcG9ydCBmaWxlc3lzCglmb3Igcm9vdCwgZGlycywgZmlsZXMgaW4gb3Mud2FsayhkbGtfZGlyKToKICAgIGZvciBmIGluIGZpbGVzOgogICAgICAgIGZwID0gb3MucGF0aC5qb2luKHJvb3QsIGYpCiAgICAgICAgcHJpbnQoJyAnLCBmcCwgT1MucGF0aC5nZXRzaXplKGZwKSAvICgxMDI0KSwgJ0tCJykKCmlmIHRhcmdldF9zcGFjZToKICAgIGFwaSA9IEhmQXBpKHRva2VuKQogICAgbWUgPSBhcGkud2hvYW1pKCkKICAgIHVzZXJuYW1lID0gbWUuWyduYW1lJ10KICAgIHNwYWNlX25hbWUgPSB0YXJnZXRfc3BhY2Uuc3BsaXQoJy8nKVstMV0gaWYgJy8nIGluIHRhcmdldF9zcGFjZSBlbHNlIHRhcmdldF9zcGFjZQogICAgZnVsbF9yZXBvID0gdXNlcm5hbWUgKyAnLycgKyBzcGFjZV9uYW1lCgogICAgdHJ5OgogICAgICAgIGFwaS5jcmVhdGVfcmVwbygKICAgICAgICAgICAgcmVwb19pZCA9IGZ1bGxfcmVwbywKICAgICAgICAgICAgcmVwb190eXBlID0gJ3NwYWNlJywKICAgICAgICAgICAgc3BhY2Vfc2RrID0gJ2RvY2tlcicsCiAgICAgICAgICAgIHNwYWNlX2hhcmR3YXJlID0gJ3NtYWxsJywKICAgICAgICAgICAgZXhpc3Rfb2sgPSB0cnVlLAogICAgICAgICAgICByZXBvX3Zpc2liaWxpdHkgPSAncHJpdmF0ZScsCiAgICAgICAgKQogICAgICAgIHByaW50KCdTcGFjZScsIGZ1bGxfcmVwbywgJ3JlYWR5JykKICAgIGV4Y2VwdCBFeGNlcHRpb24gYXMgZToKICAgICAgICBwcmludCgnU3BhY2UgY3JlYXRlIGVycm9yOiAnLCBlKQoKICAgIHByaW50KCdVcGxvYWRpbmcuLi4nKQogICAgYXBpLnVwbG9hZF9mb2xkZXIoCiAgICAgICAgZm9sZGVyX3BhdGggPSBkbGtfZGlyLAogICAgICAgIHJlcG9faWQgPSBmdWxsX3JlcG8sCiAgICAgICAgcmVwb190eXBlID0gJ21vZGVsJywKICAgICAgICBjb21taXRfbWVzc2FnZSA9ICdVcGxvYWQgJyArIG1vZGVsX2lkLAogICAgKQogICAgcHJpbnQoJ1VwbG9hZGVkISBodHRwczovL2h1Z2dpbmdmYWNlLmNvLycgKyBmdWxsX3JlcG8pCmVsc2U6CiAgICBwcmludCgnTm8gdXBsb2FkICh0YXJnZXRfc3BhY2UgZW1wdHkpJykKCnByaW50KCdET0RFCicpCg==').decode())"
+
+      - name: Run download
+        env:
+          HF_TOKEN: ${{ secrets.HF_TOKEN }}
+        run: |
+          python3 /tmp/model_dl.py "${{ github.event.inputs.model_id }}" "${{ github.event.inputs.target_space }}"
