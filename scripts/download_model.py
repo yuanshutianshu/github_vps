@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-import sys, os, json, traceback
+import sys, os, json, traceback, shutil
 from pathlib import Path
 
 model_id = sys.argv[1] if len(sys.argv) > 1 else "gpt2"
@@ -13,7 +13,6 @@ print(f"Output: {MODEL_DIR}")
 try:
     import subprocess
     
-    # git clone the model repo (no auth needed for public models)
     hf_url = f"https://huggingface.co/{model_id}"
     print(f"Cloning from {hf_url}...")
     
@@ -28,9 +27,14 @@ try:
         print(f"Clone failed: {result.stderr}")
         sys.exit(1)
     
+    # Remove .git to save space
+    git_dir = MODEL_DIR / ".git"
+    if git_dir.exists():
+        shutil.rmtree(git_dir)
+        print("Removed .git directory")
+    
     print("Clone done.")
     
-    # List files
     files = sorted(MODEL_DIR.rglob("*"))
     manifest = {"model_id": model_id, "files": []}
     total_size = 0
