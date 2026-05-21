@@ -1,0 +1,29 @@
+name: HF Debug
+on:
+  workflow_dispatch:
+    inputs:
+      model_id:
+        description: "Model"
+        required: true
+        type: string
+
+jobs:
+  debug:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Check HF
+        env:
+          HF_TOKEN: ${{ secrets.HF_TOKEN }}
+        run: |
+          pip install huggingface_hub -q
+          python3 -c "from huggingface_hub import HfApi; api=HfApi(token='$HF_TOKEN'); me=api.whoami(); print('User:', me['name'], 'Disk:', me.get('diskUsage', 'N/A'))"
+
+      - name: Run model download
+        env:
+          HF_TOKEN: ${{ secrets.HF_TOKEN }}
+        run: |
+          echo "Model: ${{ github.event.inputs.model_id }}"
+          python3 -u scripts/download_model.py "${{ github.event.inputs.model_id }}" "" 2>&1
