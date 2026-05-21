@@ -5,41 +5,34 @@ from pathlib import Path
 model_id = sys.argv[1] if len(sys.argv) > 1 else "gpt2"
 OUTPUT_DIR = Path("/tmp/model_output")
 MODEL_DIR = OUTPUT_DIR / model_id.replace("/", "_")
-MODEL_DIR.mkdir(parents=True, exist_ok=True)
+os.environ["HF_HUB_ENABLE_HF_TRANSFER"] = "0"
+os.environ["TRANSFORMERS_OFFLINE"] = "0"
 
 print(f"=== DOWNLOAD SCRIPT ===")
 print(f"Model: {model_id}")
 print(f"Output: {MODEL_DIR}")
 
 try:
-    from huggingface_hub import snapshot_download
+    from transformers import AutoModelForCausalLM, AutoTokenizer
     
-    print("Downloading...")
-    # cache_dir defaults to ~/.cache/huggingface (NOT in OUTPUT_DIR)
-    # local_dir is where the "view" of model files goes
-    local_path = snapshot_download(
-        repo_id=model_id,
-        local_dir=str(MODEL_DIR),
-        local_dir_use_symlinks=False,
-        resume_download=True,
-    )
-    print(f"Snapshot path: {local_path}")
+    print("Downloading model...")
+    model = AutoModelForCausalLM.from_pretrained(model_id)
+    model.save_pretrained(save_directory=str(MODEL_DIR))
     
-    # Now list ONLY the model files (local_path is a subdirectory of MODEL_DIR)
-    local_p = Path(local_path)
-    print(f"\nModel files in snapshot:")
+    print("Downloading tokenizer...")
+    tok = AutoTokenizer.from_pretrained(model_id)
+    tok.save_pretrained(save_directory=str(MODEL_DIR))
     
+    # List output
+    files = sorted(MODEL_DIR.rglob("*"))
     manifest = {"model_id": model_id, "files": []}
     total_size = 0
-    
-    # Only list the top-level snapshot directory, not subdirs like blobs
-    for f in sorted(local_p.iterdir()):
+    for f in files:
         if f.is_file():
-            rel = str(f.relative_to(local_p.parent))
             sz = f.stat().st_size
-            manifest["files"].append({"name": rel, "size": sz})
+            manifest["files"].append({"name": str(f.relative_to(MODEL_DIR)), "size": sz})
             total_size += sz
-            print(f"  {rel} ({sz} bytes)")
+            print(f"  {f.name} ({sz} bytes)")
     
     with open(OUTPUT_DIR / "manifest.json", "w") as mf:
         json.dump(manifest, mf, indent=2)
