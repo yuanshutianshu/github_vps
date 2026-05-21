@@ -1,44 +1,41 @@
 #!/usr/bin/env python3
-import sys, os, json, shutil, traceback
+import sys, os, json, traceback
 from pathlib import Path
 
 model_id = sys.argv[1] if len(sys.argv) > 1 else "gpt2"
 OUTPUT_DIR = Path("/tmp/model_output")
-OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
+MODEL_DIR = OUTPUT_DIR / model_id.replace("/", "_")
+MODEL_DIR.mkdir(parents=True, exist_ok=True)
 
 print(f"=== DOWNLOAD SCRIPT ===")
 print(f"Model: {model_id}")
+print(f"Output: {MODEL_DIR}")
 
 try:
     from huggingface_hub import snapshot_download
     
     print("Downloading...")
+    # local_dir puts files directly there, no blobs/ in the path
     local_path = snapshot_download(
         repo_id=model_id,
-        cache_dir=str(OUTPUT_DIR / "hf_cache"),
+        local_dir=str(MODEL_DIR),
+        local_dir_use_symlinks=False,
         resume_download=True,
     )
-    print(f"Snapshot path: {local_path}")
+    print(f"Downloaded to: {local_path}")
     
+    # List what's there
     local_p = Path(local_path)
-    print("Snapshot contents:")
-    for f in sorted(local_p.rglob("*"))[:20]:
-        print(f"  {f.relative_to(local_p)}")
-    
-    output_model = OUTPUT_DIR / model_id.replace("/", "_")
-    output_model.mkdir(parents=True, exist_ok=True)
+    files = sorted(local_p.rglob("*"))
+    print(f"Total items: {len(files)}")
     
     manifest = {"model_id": model_id, "files": []}
     total_size = 0
-    
-    for f in sorted(local_p.rglob("*")):
+    for f in files:
         if f.is_file():
-            rel = f.relative_to(local_p)
-            dest = output_model / rel
-            dest.parent.mkdir(parents=True, exist_ok=True)
-            shutil.copy2(f, dest)
+            rel = str(f.relative_to(local_p))
             sz = f.stat().st_size
-            manifest["files"].append({"name": str(rel), "size": sz})
+            manifest["files"].append({"name": rel, "size": sz})
             total_size += sz
             print(f"  {rel} ({sz} bytes)")
     
